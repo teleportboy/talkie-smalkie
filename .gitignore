@@ -1,3 +1,10 @@
+#client side
+# dependencies
+/node_modules
+
+# production
+/build
+
 # Prerequisites
 *.d
 
