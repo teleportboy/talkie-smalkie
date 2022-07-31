@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "types.h": "c",
+        "netdb.h": "c",
+        "connections_queue.h": "c",
+        "socket.h": "c",
+        "un.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}
