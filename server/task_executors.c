@@ -4,6 +4,8 @@
 #include <string.h>
 
 #include "task_executors.h"
+#include "http_parser.h"
+#include "database.h"
 
 #include "types.h"
 
@@ -78,7 +80,6 @@ int get_http_method_id(char* method) {
 
 int serve_file(const socket_descriptor client_socket, const char* path, const char* ct) {
     FILE *fp = fopen(path, "rb");
-    printf("%s\n", path);
 
     fseek(fp, 0L, SEEK_END);
     size_t cl = ftell(fp);
@@ -122,4 +123,36 @@ void handle_GET_scripts(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.bundle.js", "application/javascript");
     close(args->client_socket);
+}
+
+void handle_POST_login(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* http_body = calloc(512, sizeof(char));
+    parse_http_body(args->http, http_body);
+
+    char* name_ = calloc(512, sizeof(char));
+    parse_json_body(http_body, name_, "uname");
+    char* psw_ = calloc(512, sizeof(char));
+    parse_json_body(http_body, psw_, "psw");
+
+    char* record_values = calloc(512, sizeof(char));
+    sprintf(record_values, "'%s', '%s'", name_, psw_);
+    printf("rec values %s\n", record_values);
+
+    http response;
+    http_set_status_code(&response, "200 OK");
+    http_set_connection_status(&response, "close");
+    http_set_content_type(&response, "application/json");
+    http_set_body(&response, "{\"is_ok\":\"true\"}");
+
+    http_response(&response, args->client_socket);
+
+    free(http_body);
+    free(name_);
+    free(psw_);
+    free(record_values);
+
+    close(args->client_socket);
+    //db_add_record(args->db, "users", record_values);
 }

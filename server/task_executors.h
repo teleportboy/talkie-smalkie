@@ -4,6 +4,7 @@
 #define HTTP_METHODS_COUNT 4
 
 #include "types.h"
+#include "database.h"
 
 typedef struct executor {
     char  url[100];
@@ -21,8 +22,10 @@ typedef struct http_method_executors {
 } http_method_executors;
 
 typedef struct task_args {
+    char              url[256];
+    char              http[2048];
+    data_base*        db;
     socket_descriptor client_socket;
-    char url[256];
 } task_args;
 
 http_method_executors* init_executors(int count);
@@ -36,5 +39,7 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
 
 void handle_GET_html(void* data);
 void handle_GET_scripts(void* data);
+
+void handle_POST_login(void* data);
 
 #endif

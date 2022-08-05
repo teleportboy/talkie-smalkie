@@ -4,7 +4,15 @@
         "netdb.h": "c",
         "connections_queue.h": "c",
         "socket.h": "c",
-        "un.h": "c"
+        "un.h": "c",
+        "users.h": "c",
+        "sqlite3.h": "c",
+        "task_executors.h": "c",
+        "stdlib.h": "c",
+        "database.h": "c",
+        "http_parser.h": "c",
+        "utility.h": "c",
+        "in.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

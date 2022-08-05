@@ -10,8 +10,8 @@ export function App() {
     <div className='container'>
       <Routes>
         <Route path="/" element={<Chat />} />
-        <Route exact path='/login' element={<Login />} />
-        <Route exact path='/registration' element={<Registration />} />
+        <Route path='/login' element={<Login />} />
+        <Route path='/registration' element={<Registration />} />
       </Routes>
     </div>
   );

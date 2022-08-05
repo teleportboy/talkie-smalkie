@@ -10,12 +10,13 @@
 #include "connections_queue.h"
 #include "http_parser.h"
 #include "task_executors.h"
+#include "database.h"
 
-#define SERVER_PORT    "8080"
+#define SERVER_PORT    "8082"
 #define BUF_SIZE       4096
 #define SOCKET_ERROR   (-1)
 #define SERVER_BACKLOG 20
-#define THREADS_POOL   20
+#define THREADS_POOL   1
 
 typedef struct queue_handler_object {
     connections_queue* connections;
@@ -23,9 +24,11 @@ typedef struct queue_handler_object {
     pthread_cond_t     conditional;
 
     http_method_executors* executors;
+    task_args*             external_objects;
 } queue_handler_object;
 
-int handle_connection(socket_descriptor client_socket, http_method_executors* executors);
+int handle_connection(socket_descriptor client_socket, 
+    http_method_executors* executors, task_args* external_args);
 int check(int exp, const char* msg);
 char* get_content_type(const char* path);
 void foo(void* arg);
@@ -35,39 +38,17 @@ void foo(void* arg) {
     printf("%s\n gdkgnkdgkdjgjkdkgj", s);
 }
 
-void spam(socket_descriptor client_socket) {
-    char response[2048];
-
-    char buffer[BUF_SIZE];
-    int bytes_received = recv(
-        client_socket, buffer, BUF_SIZE, 0
-    );
-    printf("\r\n%s\r\n", buffer);
-    
-    sprintf(response, "%s", "HTTP/1.1 200 OK\r\n");
-    sprintf(response + strlen(response), "%s", "Connection: close\r\n");
-    sprintf(response + strlen(response), "%s", "Content-Type: text/event-stream\r\n\r\n");
-    sprintf(response + strlen(response), "%s", "data: wukong comand\n\n");
-
-    //printf("\n%s\n", response);   
-
-    int bytes_sent = send(
-        client_socket, response, strlen(response), 0
-    );
-
-    close(client_socket);
-
-}
-
 void* thread_handler_function(void* arg) {
     queue_handler_object*  arg_obj     = ((queue_handler_object*)arg);
     connections_queue*     connections = arg_obj->connections;
     pthread_mutex_t*       mutex       = &arg_obj->mutex;
     pthread_cond_t*        conditional = &arg_obj->conditional;
 
-    http_method_executors* executors   = arg_obj->executors;
-    
+    http_method_executors* executors   = arg_obj->executors;  
+
     socket_descriptor      client_s    = -1;
+
+    
 
     while (1) {
         pthread_mutex_lock(mutex);
@@ -80,16 +61,21 @@ void* thread_handler_function(void* arg) {
         
         pthread_mutex_unlock(mutex);
         
-        handle_connection(client_s, executors);
+        handle_connection(client_s, executors, arg_obj->external_objects);
     }
 }
 
 int main(int argc, char **argv) {
+    data_base data_base;
+    db_init(&data_base, "database.db");
+    db_create_table(&data_base, "users", "uname, psw");
+
     addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags    = AI_PASSIVE;
+    //hints.
         
     addrinfo* bind_addres = &hints;
     getaddrinfo(NULL, SERVER_PORT, &hints, &bind_addres);
@@ -98,27 +84,44 @@ int main(int argc, char **argv) {
         bind_addres->ai_family, bind_addres->ai_socktype,
         bind_addres->ai_protocol
     );
-    check(server_socket, "Failed to create socket");
+    check(server_socket, "Failed to create socket\n");
+
+    int yes = 1;
+    int is_reusable = setsockopt(server_socket, SOL_SOCKET, 
+        SO_REUSEADDR, &yes, sizeof(int));
+    check(is_reusable, "Reuse Failed!\n");
 
     int is_server_binded = bind(server_socket,
         bind_addres->ai_addr, bind_addres->ai_addrlen);
-    check(is_server_binded, "Bind Failed!");    
+    check(is_server_binded, "Bind Failed!\n"); 
+
     freeaddrinfo(bind_addres);
 
     int is_listen = listen(server_socket, SERVER_BACKLOG);
-    check(is_listen, "Listen Failed!");
+    check(is_listen, "Listen Failed!\n");
 
     http_method_executors* executors = init_executors(HTTP_METHODS_COUNT);
-    add_executor(executors, handle_GET_html, "GET", "/");
-    add_executor(executors, handle_GET_scripts, "GET", "/index.bundle.js");
+    add_executor(executors, handle_GET_html,    "GET",  "/");
+    add_executor(executors, handle_GET_html,    "GET",  "/login");
+    add_executor(executors, handle_GET_html,    "GET",  "/registration");
+    add_executor(executors, handle_GET_scripts, "GET",  "/index.bundle.js");
+    add_executor(executors, handle_POST_login,  "POST", "/login");
+
     // add_executor(executors, foo, "GET", "/");
     // add_executor(executors, foo, "GET", "/");
     // add_executor(executors, foo, "GET", "/");
 
     connections_queue* connections = init_connections_queue();
+    task_args t_args = {
+        .db = &data_base
+    };
     queue_handler_object arg_obj = {
-        .connections = connections,
+        .external_objects = &t_args,
+
         .executors   = executors,
+
+        .connections = connections,
+
         .mutex       = PTHREAD_MUTEX_INITIALIZER,
         .conditional = PTHREAD_COND_INITIALIZER
     };
@@ -136,6 +139,7 @@ int main(int argc, char **argv) {
         socket_descriptor client_socket = accept( 
             server_socket, &client_address, &client_size
         );
+        printf("accepted\n");
         check(client_socket, "accept failed");
 
         pthread_mutex_lock(&arg_obj.mutex);
@@ -157,40 +161,40 @@ int check(int exp, const char* msg) {
     return exp;
 }
 
-int handle_connection(socket_descriptor client_socket, http_method_executors* executors) {
+int handle_connection(socket_descriptor client_socket, 
+    http_method_executors* executors, task_args* external_objects) {
+    
+    static int count = 0;
+    printf("%d", count++);
+
     char buffer[BUF_SIZE];
     int bytes_received = recv(
         client_socket, buffer, BUF_SIZE, 0
     );
-    printf("\r\n%s\r\n", buffer);
+    //printf("\r\n%s\r\n", buffer);
 
-    char method[100];
+    char method[100] = { 0 };
     parse_http_method(buffer, method);
-    char uri[100];
+    char uri[100] = { 0 };
     parse_http_uri(buffer, uri);
     
     void (*executor)(void*) = get_executor(executors, method, uri);
 
     task_args args = {
-        .client_socket = client_socket
+        .client_socket = client_socket, 
+        .db            = external_objects->db      
     };
     strcpy(args.url, uri);
-    if (executor) {
-        executor((void*)&args);
-    }   
+    strcpy(args.http, buffer);
 
-    return 0;
+    if (!executor) {
+        return 0;
+    }
+
+    executor((void*)&args);
+
+    return 1;
 }
-
-char* get_content_type(const char* path) {
-    const char* last_dot = strrchr(path, '.');
-    if (last_dot) {
-        if (strcmp(last_dot, ".html") == 0) return "text/html";
-        if (strcmp(last_dot, ".js") == 0) return "application/javascript";
-    } 
-    return "application/octet-stream";
-}
-
 
 
     // char response[2048];
@@ -205,3 +209,27 @@ char* get_content_type(const char* path) {
     // int bytes_sent = send(
     //     client_socket, response, strlen(response), 0
     // );
+
+// void spam(socket_descriptor client_socket) {
+//     char response[2048];
+
+//     char buffer[BUF_SIZE];
+//     int bytes_received = recv(
+//         client_socket, buffer, BUF_SIZE, 0
+//     );
+//     printf("\r\n%s\r\n", buffer);
+    
+//     sprintf(response, "%s", "HTTP/1.1 200 OK\r\n");
+//     sprintf(response + strlen(response), "%s", "Connection: close\r\n");
+//     sprintf(response + strlen(response), "%s", "Content-Type: text/event-stream\r\n\r\n");
+//     sprintf(response + strlen(response), "%s", "data: wukong comand\n\n");
+
+//     //printf("\n%s\n", response);   
+
+//     int bytes_sent = send(
+//         client_socket, response, strlen(response), 0
+//     );
+
+//     close(client_socket);
+
+// }

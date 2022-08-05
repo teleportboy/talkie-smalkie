@@ -9,9 +9,13 @@
 				"-fdiagnostics-color=always",
 				"-g",
 				"${workspaceFolder}/server/*.c",
+				"${workspaceFolder}/server/sqlite3_api/sqlite3.c",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}",
-				"-pthread"
+				"-pthread",
+				
+				"-lpthread",
+				"-ldl"
 			],
 			"options": {
 				"cwd": "${fileDirname}"
