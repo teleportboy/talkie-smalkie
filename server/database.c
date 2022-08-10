@@ -17,10 +17,11 @@ void db_close(data_base* db) {
 //todo нормально колонки
 int db_create_table(data_base* db, char* table, char* columns) {	
     char query[128];
-	sprintf(query, "CREATE TABLE %s(%s)", table, columns);
+	sprintf(query, "create table if not exists %s(%s)", table, columns);
 
-	if (sqlite3_exec(db->data_base, query, 0, 0, NULL)) { 
-        printf("oshibochka create table\n");
+	int res = 0;
+	if ((res = sqlite3_exec(db->data_base, query, 0, 0, NULL))) { 
+        printf("result of creation table is: %d\n", res);
 		return 0;
 	}
 	return 1;

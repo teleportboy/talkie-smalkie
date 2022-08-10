@@ -11,8 +11,9 @@
 #include "http_parser.h"
 #include "task_executors.h"
 #include "database.h"
+#include "online_users_hashtable.h"
 
-#define SERVER_PORT    "8082"
+#define SERVER_PORT    "8888"
 #define BUF_SIZE       4096
 #define SOCKET_ERROR   (-1)
 #define SERVER_BACKLOG 20
@@ -68,7 +69,8 @@ void* thread_handler_function(void* arg) {
 int main(int argc, char **argv) {
     data_base data_base;
     db_init(&data_base, "database.db");
-    db_create_table(&data_base, "users", "uname, psw");
+    db_create_table(&data_base, "users", "uname, psw, all_chats, friends");
+    hash_table online_users = create_hash_table(1024);
 
     addrinfo hints;
     memset(&hints, 0, sizeof(hints));
@@ -101,11 +103,13 @@ int main(int argc, char **argv) {
     check(is_listen, "Listen Failed!\n");
 
     http_method_executors* executors = init_executors(HTTP_METHODS_COUNT);
-    add_executor(executors, handle_GET_html,    "GET",  "/");
-    add_executor(executors, handle_GET_html,    "GET",  "/login");
-    add_executor(executors, handle_GET_html,    "GET",  "/registration");
-    add_executor(executors, handle_GET_scripts, "GET",  "/index.bundle.js");
-    add_executor(executors, handle_POST_login,  "POST", "/login");
+    add_executor(executors, GET_html,     "GET",  "/");
+    add_executor(executors, GET_html,     "GET",  "/login");
+    add_executor(executors, GET_html,     "GET",  "/registration");
+    add_executor(executors, GET_scripts,  "GET",  "/index.bundle.js");
+    add_executor(executors, POST_login,   "POST", "/login");
+    add_executor(executors, POST_registr, "POST", "/registration");
+    add_executor(executors, POST_message, "POST", "/message");
 
     // add_executor(executors, foo, "GET", "/");
     // add_executor(executors, foo, "GET", "/");
@@ -113,14 +117,15 @@ int main(int argc, char **argv) {
 
     connections_queue* connections = init_connections_queue();
     task_args t_args = {
-        .db = &data_base
+        .db = &data_base,
+        .online_users = &online_users,
     };
     queue_handler_object arg_obj = {
         .external_objects = &t_args,
 
         .executors   = executors,
 
-        .connections = connections,
+        .connections  = connections,        
 
         .mutex       = PTHREAD_MUTEX_INITIALIZER,
         .conditional = PTHREAD_COND_INITIALIZER
@@ -167,11 +172,10 @@ int handle_connection(socket_descriptor client_socket,
     static int count = 0;
     printf("%d", count++);
 
-    char buffer[BUF_SIZE];
-    int bytes_received = recv(
-        client_socket, buffer, BUF_SIZE, 0
-    );
-    //printf("\r\n%s\r\n", buffer);
+    char* buffer = calloc(2048, sizeof(char));
+    int received = recv(client_socket, buffer, BUF_SIZE, 0);
+    
+    printf("\r\n%s\r\n", buffer);
 
     char method[100] = { 0 };
     parse_http_method(buffer, method);
@@ -182,7 +186,8 @@ int handle_connection(socket_descriptor client_socket,
 
     task_args args = {
         .client_socket = client_socket, 
-        .db            = external_objects->db      
+        .db            = external_objects->db,
+        .online_users  = external_objects->online_users 
     };
     strcpy(args.url, uri);
     strcpy(args.http, buffer);

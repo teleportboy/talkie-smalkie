@@ -5,6 +5,7 @@
 
 #include "types.h"
 #include "database.h"
+#include "online_users_hashtable.h"
 
 typedef struct executor {
     char  url[100];
@@ -26,6 +27,7 @@ typedef struct task_args {
     char              http[2048];
     data_base*        db;
     socket_descriptor client_socket;
+    hash_table*       online_users;
 } task_args;
 
 http_method_executors* init_executors(int count);
@@ -37,9 +39,11 @@ void add_executor(http_method_executors* executors, void (*p_executor)(void*),
 int get_http_method_id(char* method);
 int serve_file(const socket_descriptor client_socket, const char* path, const char* ct);
 
-void handle_GET_html(void* data);
-void handle_GET_scripts(void* data);
+void GET_html(void* data);
+void GET_scripts(void* data);
 
-void handle_POST_login(void* data);
+void POST_login(void* data);
+void POST_registr(void* data);
+void POST_message(void* data);
 
 #endif

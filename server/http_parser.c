@@ -82,12 +82,10 @@ void http_response(http* response, socket_descriptor client_socket) {
     char* buffer = calloc(4096, sizeof(char));
 
     int length = 0;
-    length  = sprintf(buffer, "HTTP/1.1 %s\r\n", response->status_code);
+    length  = sprintf(buffer,          "HTTP/1.1 %s\r\n", response->status_code);
     length += sprintf(buffer + length, "Connection: %s\r\n", response->connection_status);
     length += sprintf(buffer + length, "Content-Type: %s\r\n\r\n", response->content_type);
     length += sprintf(buffer + length, "%s", response->body);
-
-    printf("response:\n%s\n", buffer);
     
     int bytes_sent = 0;
     while (bytes_sent < length) {

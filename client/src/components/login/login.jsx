@@ -7,6 +7,7 @@ export function Login() {
 
     const formData = new FormData(event.target.parentNode);
     const formProps = Object.fromEntries(formData);
+    console.log(formProps);
     
     fetch('/login', {
       method: "POST",

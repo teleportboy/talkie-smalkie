@@ -6,6 +6,8 @@
 #include "task_executors.h"
 #include "http_parser.h"
 #include "database.h"
+#include "utility.h"
+#include "online_users_hashtable.h"
 
 #include "types.h"
 
@@ -113,32 +115,40 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
     fclose(fp);
 }
 
-void handle_GET_html(void* data) {
+void GET_html(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.html", "text/html");
     close(args->client_socket);
 }
 
-void handle_GET_scripts(void* data) {
+void GET_scripts(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.bundle.js", "application/javascript");
     close(args->client_socket);
 }
 
-void handle_POST_login(void* data) {
+void POST_login(void* data) {
     task_args* args = (task_args*)data;
 
     char* http_body = calloc(512, sizeof(char));
     parse_http_body(args->http, http_body);
 
-    char* name_ = calloc(512, sizeof(char));
-    parse_json_body(http_body, name_, "uname");
-    char* psw_ = calloc(512, sizeof(char));
-    parse_json_body(http_body, psw_, "psw");
+    char* uname = calloc(64, sizeof(char));
+    parse_json_body(http_body, uname, "uname");
+    char* psw = calloc(64, sizeof(char));
+    parse_json_body(http_body, psw, "psw");
 
-    char* record_values = calloc(512, sizeof(char));
-    sprintf(record_values, "'%s', '%s'", name_, psw_);
-    printf("rec values %s\n", record_values);
+    // char* record_values = calloc(192, sizeof(char));
+    // sprintf(record_values, "'%s', '%s'", uname, psw);
+    // printf("rec values %s\n", record_values);
+
+    // to do: work with db
+
+    // to do: add client to hashtable of online
+    ht_insert(args->online_users, uname, args->client_socket);
+    table_element user = ht_get_item(args->online_users, uname);
+    printf("table_element: hash %d, is empty: %d, uname: %s", 
+            user.hash, user.is_empty, user.user.nickname);
 
     http response;
     http_set_status_code(&response, "200 OK");
@@ -148,11 +158,102 @@ void handle_POST_login(void* data) {
 
     http_response(&response, args->client_socket);
 
+    close(args->client_socket);
+
     free(http_body);
-    free(name_);
-    free(psw_);
-    free(record_values);
+    free(uname);
+    free(psw);
+    // free(record_values);
+}
+
+void POST_registr(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* http_body = malloc(512 * sizeof(char));
+    parse_http_body(args->http, http_body);
+
+    char* uname = malloc(64 * sizeof(char));
+    parse_json_body(http_body, uname, "uname");    
+    char* psw = malloc(64 * sizeof(char));
+    parse_json_body(http_body, psw, "psw");
+
+    char* record_values = malloc(192 * sizeof(char));
+    sprintf(record_values, "'%s', '%s', '%s_all_chats', '%s_friends'", 
+            uname, psw, uname, uname);
+
+    db_add_record(args->db, "users", record_values);
+
+    char* all_chats_table_id = malloc(128 * sizeof(char));
+    sprintf(all_chats_table_id, "%s_all_chats", uname);
+    db_create_table(args->db, all_chats_table_id, "'uname_receiver', 'chat_id'");
+
+    char* friends_table_id = malloc(128 * sizeof(char));
+    sprintf(friends_table_id, "%s_friends", uname);
+    db_create_table(args->db ,friends_table_id, "'uname'");
+    
+    //to do: if ok
+    http response;
+    http_set_status_code(&response, "200 OK");
+    http_set_connection_status(&response, "close");
+    http_set_content_type(&response, "application/json");
+    http_set_body(&response, "{\"is_ok\":\"true\"}");
+
+    http_response(&response, args->client_socket);
 
     close(args->client_socket);
-    //db_add_record(args->db, "users", record_values);
+
+    //Освободить использованную память
+    free(http_body);
+    free(uname);
+    free(psw);
+    free(record_values);
+    free(all_chats_table_id);
+    free(friends_table_id);
+}
+
+void POST_message(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* http_body = malloc(512 * sizeof(char));
+    parse_http_body(args->http, http_body);
+
+    char* message  = calloc(512, sizeof(char));
+    parse_json_body(http_body, message, "message");
+    printf("message: %s\n", message);
+    char* sender   = malloc(64 * sizeof(char));
+    parse_json_body(http_body, sender, "sender");
+    char* receiver = malloc(64 * sizeof(char));
+    parse_json_body(http_body, receiver, "receiver");
+
+    char* table_receiver = concat(receiver, sender);
+    db_create_table(args->db, table_receiver, "'message', 'is_sent'");
+
+    char* receiver_values = malloc(128 * sizeof(char));
+    sprintf(receiver_values, "'%s', '0'", message);
+    db_add_record(args->db, table_receiver, receiver_values);
+
+    char* table_sender = concat(sender, receiver);
+    db_create_table(args->db, table_sender, "'message', 'is_sent'");
+
+    char* sender_values = malloc(128 * sizeof(char));
+    sprintf(sender_values, "'%s', '1'", message);
+    db_add_record(args->db, table_sender, sender_values);
+
+    http response;
+    http_set_status_code(&response, "200 OK");
+    http_set_connection_status(&response, "close");
+    http_set_content_type(&response, "application/json");
+    http_set_body(&response, "{\"is_ok\":\"true\"}");
+    http_response(&response, args->client_socket);
+
+    close(args->client_socket);
+
+    free(http_body);
+    free(message);
+    free(sender);
+    free(receiver);
+    free(table_receiver);
+    free(receiver_values);
+    free(table_sender);
+    free(sender_values);     
 }
