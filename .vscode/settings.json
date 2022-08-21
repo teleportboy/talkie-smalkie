@@ -12,7 +12,10 @@
         "database.h": "c",
         "http_parser.h": "c",
         "utility.h": "c",
-        "in.h": "c"
+        "in.h": "c",
+        "online_users_hashtable.h": "c",
+        "inet.h": "c",
+        "amqp.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

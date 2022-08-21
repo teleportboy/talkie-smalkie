@@ -7,13 +7,53 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include "database.h"
+
 typedef struct sockaddr_in      sockaddr_in;
 typedef struct sockaddr         sockaddr;
 typedef struct addrinfo         addrinfo;
 
 typedef int    socket_descriptor;
 
+typedef struct executor {
+    char  url[100];
+    void  (*executor)(void*);
+    int   is_exist;
 
+    struct executor* next;
+} executor;
 
+typedef struct http_method_executors {
+    int method_id;
+
+    executor* list_head;
+    executor* list_tail;
+} http_method_executors;
+
+typedef struct task_args {
+    char*             url;
+    char*             http;
+    data_base*        db;
+    socket_descriptor client_socket;
+} task_args;
+
+typedef struct queue_node {
+    socket_descriptor  client_socket;    
+    struct queue_node* next_node;
+} queue_node;
+
+typedef struct connections_queue {
+    queue_node* front;
+    queue_node* rear;
+} connections_queue;
+
+typedef struct queue_handler_object {
+    connections_queue* connections;
+    pthread_mutex_t    mutex;
+    pthread_cond_t     conditional;
+
+    http_method_executors* executors;
+    task_args*             external_objects;
+} queue_handler_object;
 
 #endif

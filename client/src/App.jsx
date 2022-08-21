@@ -6,6 +6,11 @@ import { Registration } from './components/login/registration.jsx';
 import './App.css'
 
 export function App() {
+  // const newMessageEvent = new EventSource('/message');
+  // newMessageEvent.addEventListener('message', (e) => {
+  //   console.log(e.data);
+  // });
+
   return (
     <div className='container'>
       <Routes>

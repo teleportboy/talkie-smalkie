@@ -11,7 +11,7 @@ void parse_http_method(char* http, char* dest) {
     memcpy(dest, http, index);    
 }
 
-void parse_http_uri(char* http, char* dest) {
+void parse_http_url(char* http, char* dest) {
     int start = nth_char_index_of(http, ' ', 1) + 1;
     int end   = nth_char_index_of(http, ' ', 2);
     
@@ -85,16 +85,19 @@ void http_response(http* response, socket_descriptor client_socket) {
     length  = sprintf(buffer,          "HTTP/1.1 %s\r\n", response->status_code);
     length += sprintf(buffer + length, "Connection: %s\r\n", response->connection_status);
     length += sprintf(buffer + length, "Content-Type: %s\r\n\r\n", response->content_type);
-    length += sprintf(buffer + length, "%s", response->body);
+    length += sprintf(buffer + length, "%s\r\n\r\n", response->body);
     
+
     int bytes_sent = 0;
     while (bytes_sent < length) {
         bytes_sent = send(client_socket, buffer, length, 0);
         if (bytes_sent == -1) {
             printf("eee kuda ti lezish\n");
+            printf("response length %d bytes sent %d\n", strlen(buffer), bytes_sent);
             return;
         }
     }
+    printf("response length %d bytes sent %d\n", strlen(buffer), bytes_sent);
 }
 
 //     sprintf(response, "%s", "HTTP/1.1 200 OK\r\n");

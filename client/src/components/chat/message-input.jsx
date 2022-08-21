@@ -15,7 +15,13 @@ export function MessageInput() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(message)
-    });
+    })
+      .then((response) => {
+        return response.json();
+      })
+      .then(data => {
+        console.log(data);
+      });
   }
   
   return (

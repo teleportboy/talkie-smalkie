@@ -14,7 +14,7 @@ typedef struct http {
 } http;
 
 void parse_http_method(char* http, char* dest);
-void parse_http_uri(char* http, char* dest);
+void parse_http_url(char* http, char* dest);
 void parse_http_body(char* http, char* dest);
 
 void parse_json_body(char* json, char* dest, char* property);
@@ -26,6 +26,8 @@ void http_set_status_code(http* http, char* str);
 void http_set_method(http* http, char* str);
 void http_set_body(http* http, char* str);
 void http_set_url(http* http, char* str);
+//to do
+void http_free(http* http);
 
 void http_response(http* response, socket_descriptor client_socket);
 

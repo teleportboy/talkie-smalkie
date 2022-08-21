@@ -9,6 +9,8 @@
 #include "utility.h"
 #include "online_users_hashtable.h"
 
+#include "amqp_api/rabbitmq.h"
+
 #include "types.h"
 
 http_method_executors* init_executors(int count) {
@@ -127,45 +129,7 @@ void GET_scripts(void* data) {
     close(args->client_socket);
 }
 
-void POST_login(void* data) {
-    task_args* args = (task_args*)data;
-
-    char* http_body = calloc(512, sizeof(char));
-    parse_http_body(args->http, http_body);
-
-    char* uname = calloc(64, sizeof(char));
-    parse_json_body(http_body, uname, "uname");
-    char* psw = calloc(64, sizeof(char));
-    parse_json_body(http_body, psw, "psw");
-
-    // char* record_values = calloc(192, sizeof(char));
-    // sprintf(record_values, "'%s', '%s'", uname, psw);
-    // printf("rec values %s\n", record_values);
-
-    // to do: work with db
-
-    // to do: add client to hashtable of online
-    ht_insert(args->online_users, uname, args->client_socket);
-    table_element user = ht_get_item(args->online_users, uname);
-    printf("table_element: hash %d, is empty: %d, uname: %s", 
-            user.hash, user.is_empty, user.user.nickname);
-
-    http response;
-    http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "close");
-    http_set_content_type(&response, "application/json");
-    http_set_body(&response, "{\"is_ok\":\"true\"}");
-
-    http_response(&response, args->client_socket);
-
-    close(args->client_socket);
-
-    free(http_body);
-    free(uname);
-    free(psw);
-    // free(record_values);
-}
-
+//to do: refactor, refactor and refactor
 void POST_registr(void* data) {
     task_args* args = (task_args*)data;
 
@@ -180,7 +144,6 @@ void POST_registr(void* data) {
     char* record_values = malloc(192 * sizeof(char));
     sprintf(record_values, "'%s', '%s', '%s_all_chats', '%s_friends'", 
             uname, psw, uname, uname);
-
     db_add_record(args->db, "users", record_values);
 
     char* all_chats_table_id = malloc(128 * sizeof(char));
@@ -211,9 +174,46 @@ void POST_registr(void* data) {
     free(friends_table_id);
 }
 
+//to do: refactor
+void POST_login(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* http_body = calloc(512, sizeof(char));
+    parse_http_body(args->http, http_body);
+
+    char* uname = calloc(64, sizeof(char));
+    parse_json_body(http_body, uname, "uname");
+    char* psw = calloc(64, sizeof(char));
+    parse_json_body(http_body, psw, "psw");
+
+    char* record_values = calloc(192, sizeof(char));
+    sprintf(record_values, "'%s', '%s'", uname, psw);
+    printf("rec values %s\n", record_values);
+
+    // to do: work with db
+
+    http response;
+    http_set_status_code(&response, "200 OK");
+    http_set_connection_status(&response, "close");
+    http_set_content_type(&response, "application/json");
+    http_set_body(&response, "{\"data\":\"ok\"}");
+    http_response(&response, args->client_socket);
+
+    close(args->client_socket);
+
+    free(http_body);
+    free(uname);
+    free(psw);    
+    free(record_values);
+    //to do free response http
+}
+
+
+//to do: refactor, refactor and refactor. poka chto invalid
 void POST_message(void* data) {
     task_args* args = (task_args*)data;
 
+    //parsing
     char* http_body = malloc(512 * sizeof(char));
     parse_http_body(args->http, http_body);
 
@@ -225,20 +225,9 @@ void POST_message(void* data) {
     char* receiver = malloc(64 * sizeof(char));
     parse_json_body(http_body, receiver, "receiver");
 
-    char* table_receiver = concat(receiver, sender);
-    db_create_table(args->db, table_receiver, "'message', 'is_sent'");
+    rabbitmq_send_message("test1-chq", "test1", message);
 
-    char* receiver_values = malloc(128 * sizeof(char));
-    sprintf(receiver_values, "'%s', '0'", message);
-    db_add_record(args->db, table_receiver, receiver_values);
-
-    char* table_sender = concat(sender, receiver);
-    db_create_table(args->db, table_sender, "'message', 'is_sent'");
-
-    char* sender_values = malloc(128 * sizeof(char));
-    sprintf(sender_values, "'%s', '1'", message);
-    db_add_record(args->db, table_sender, sender_values);
-
+    //response
     http response;
     http_set_status_code(&response, "200 OK");
     http_set_connection_status(&response, "close");
@@ -252,8 +241,25 @@ void POST_message(void* data) {
     free(message);
     free(sender);
     free(receiver);
-    free(table_receiver);
-    free(receiver_values);
-    free(table_sender);
-    free(sender_values);     
+    // free(table_receiver);
+    // free(receiver_values);
+    // free(table_sender);
+    // free(sender_values);     
 }
+
+
+
+    // to do: DB work
+    // char* table_receiver = concat(receiver, sender);
+    // db_create_table(args->db, table_receiver, "'message', 'is_sent'");
+
+    // char* receiver_values = malloc(128 * sizeof(char));
+    // sprintf(receiver_values, "'%s', '0'", message);
+    // db_add_record(args->db, table_receiver, receiver_values);
+
+    // char* table_sender = concat(sender, receiver);
+    // db_create_table(args->db, table_sender, "'message', 'is_sent'");
+
+    // char* sender_values = malloc(128 * sizeof(char));
+    // sprintf(sender_values, "'%s', '1'", message);
+    // db_add_record(args->db, table_sender, sender_values);

@@ -4,31 +4,6 @@
 #define HTTP_METHODS_COUNT 4
 
 #include "types.h"
-#include "database.h"
-#include "online_users_hashtable.h"
-
-typedef struct executor {
-    char  url[100];
-    void  (*executor)(void*);
-    int   is_exist;
-
-    struct executor* next;
-} executor;
-
-typedef struct http_method_executors {
-    int method_id;
-
-    executor* list_head;
-    executor* list_tail;
-} http_method_executors;
-
-typedef struct task_args {
-    char              url[256];
-    char              http[2048];
-    data_base*        db;
-    socket_descriptor client_socket;
-    hash_table*       online_users;
-} task_args;
 
 http_method_executors* init_executors(int count);
 

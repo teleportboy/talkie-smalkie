@@ -1,4 +1,5 @@
 import React from "react";
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 
 export function Login() {
   const onSubmit = (event) => {
@@ -9,17 +10,17 @@ export function Login() {
     const formProps = Object.fromEntries(formData);
     console.log(formProps);
     
-    fetch('/login', {
+    fetchEventSource('/login', {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(formProps)
-    })
-      .then(res => res.json())
-      .then(data => {
-        console.log(data);
-      });
+      body: JSON.stringify(formProps),
+      onmessage(msg) {
+        console.log(msg.data);
+      }
+    });
+
   }
 
   return (
