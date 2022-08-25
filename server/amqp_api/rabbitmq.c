@@ -9,18 +9,14 @@
 #include "utils.h"
 #include "rabbitmq.h"
 
-int rabbitmq_send_message(char* queue, char* exchange, char* message) {
-    amqp_connection_state_t conn;
-    conn = amqp_new_connection();
+amqp_connection_state_t rabbitmq_open_connection(char* hostname, int port) {
+    amqp_connection_state_t conn = amqp_new_connection();
 
-    amqp_socket_t *socket = NULL;
-    socket = amqp_tcp_socket_new(conn);
+    amqp_socket_t* socket = amqp_tcp_socket_new(conn);
     if (!socket) {
         die("creating TCP socket");
     }
 
-    char const *hostname = "localhost";
-    const int port = 5672;
     int status = amqp_socket_open(socket, hostname, port);
     if (status) {
         die("opening TCP socket");
@@ -32,15 +28,41 @@ int rabbitmq_send_message(char* queue, char* exchange, char* message) {
     amqp_channel_open(conn, 1);
     die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
 
-    send_batch(conn, queue, exchange, message);
+    return conn;
+}
 
+void rabbitmq_close_connection(amqp_connection_state_t conn) {
     die_on_amqp_error(amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS),
                         "Closing channel");
     die_on_amqp_error(amqp_connection_close(conn, AMQP_REPLY_SUCCESS),
                         "Closing connection");
     die_on_error(amqp_destroy_connection(conn), "Ending connection");
+}
+
+void rabbitmq_send_message(amqp_connection_state_t conn, char* queue,
+                           char* exchange, char* message) {
+
+    send_batch(conn, queue, exchange, message);
+}
+
+char* rabbitmq_get_message(amqp_connection_state_t conn, char* queue_name) {
+    amqp_bytes_t queue = {
+        .bytes = strdup(queue_name),
+        .len = strlen(queue_name)
+    };
+    amqp_basic_consume(conn, 1, queue, amqp_empty_bytes, 0, 0, 0,
+                        amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(conn), "Consuming");
+
+    amqp_envelope_t envelope;
+    amqp_rpc_reply_t ret = amqp_consume_message(conn, &envelope, NULL, 0);
+
+    char* message = calloc(envelope.message.body.len + 1, sizeof(char));
+    sprintf(message, "%s", envelope.message.body.bytes);
+
+    amqp_basic_nack(conn, 1, envelope.delivery_tag, 0, 1);
     
-    return 0;
+    return message;
 }
 
 void send_batch(amqp_connection_state_t conn, char* queue_name,

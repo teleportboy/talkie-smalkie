@@ -34,7 +34,7 @@ export function Login() {
         <input type="text" placeholder="Enter Password" name="psw" required />
       </div>
       
-      <button type="submit" onClick={onSubmit}>Loooogin</button>
+      <button onClick={onSubmit} type="submit">Loooogin</button>
       
       <div className="new-acc-btn item">
         <button type="button">Create new account</button>

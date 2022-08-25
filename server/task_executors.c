@@ -120,13 +120,19 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
 void GET_html(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.html", "text/html");
-    close(args->client_socket);
+    //close(args->client_socket);
+}
+
+void GET_favicon(void* data) {
+    task_args* args = (task_args*)data;
+    serve_file(args->client_socket, "public/favicon.ico", "image/x-icon");
+    //close(args->client_socket);
 }
 
 void GET_scripts(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.bundle.js", "application/javascript");
-    close(args->client_socket);
+    //close(args->client_socket);
 }
 
 //to do: refactor, refactor and refactor
@@ -163,7 +169,7 @@ void POST_registr(void* data) {
 
     http_response(&response, args->client_socket);
 
-    close(args->client_socket);
+    //close(args->client_socket);
 
     //Освободить использованную память
     free(http_body);
@@ -174,7 +180,7 @@ void POST_registr(void* data) {
     free(friends_table_id);
 }
 
-//to do: refactor
+//to do: add db. add hashtable
 void POST_login(void* data) {
     task_args* args = (task_args*)data;
 
@@ -188,18 +194,21 @@ void POST_login(void* data) {
 
     char* record_values = calloc(192, sizeof(char));
     sprintf(record_values, "'%s', '%s'", uname, psw);
-    printf("rec values %s\n", record_values);
+    printf("rec values %s socket: %d\n", record_values, args->client_socket);
 
-    // to do: work with db
+    ht_insert(args->online_users, uname, args->client_socket);
 
     http response;
     http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "close");
-    http_set_content_type(&response, "application/json");
-    http_set_body(&response, "{\"data\":\"ok\"}");
-    http_response(&response, args->client_socket);
+    http_set_connection_status(&response, "Keep-Alive");
+    http_set_content_type(&response, "text/event-stream");
+    http_set_body(&response, "data: ok_1\r\n\r\n");
+    http_response(&response, args->client_socket);  
 
-    close(args->client_socket);
+    // int ht_sock = ht_get_item(args->online_users, uname).user.socket;
+    // http_response(&response, ht_sock);
+  
+    //close(args->client_socket);
 
     free(http_body);
     free(uname);
@@ -207,7 +216,6 @@ void POST_login(void* data) {
     free(record_values);
     //to do free response http
 }
-
 
 //to do: refactor, refactor and refactor. poka chto invalid
 void POST_message(void* data) {
@@ -225,7 +233,7 @@ void POST_message(void* data) {
     char* receiver = malloc(64 * sizeof(char));
     parse_json_body(http_body, receiver, "receiver");
 
-    rabbitmq_send_message("test1-chq", "test1", message);
+    rabbitmq_send_message(args->rabbitmq_conn, "test1-chq", "test1", message);
 
     //response
     http response;
@@ -235,7 +243,7 @@ void POST_message(void* data) {
     http_set_body(&response, "{\"is_ok\":\"true\"}");
     http_response(&response, args->client_socket);
 
-    close(args->client_socket);
+    //close(args->client_socket);
 
     free(http_body);
     free(message);
@@ -247,7 +255,44 @@ void POST_message(void* data) {
     // free(sender_values);     
 }
 
+void GET_message(void* data) {
+    task_args* args = (task_args*)data;
 
+    //parsing
+    // char* http_body = malloc(512 * sizeof(char));
+    // parse_http_body(args->http, http_body);
+
+    // char* chat_uuid  = malloc(64 * sizeof(char));
+    // parse_json_body(http_body, chat_uuid, "chat_uuid");
+
+    //char* message = rabbitmq_get_message(args->rabbitmq_conn, "test1-chq");
+
+    table_element online = ht_get_item(args->online_users, "teleportboy");
+
+    http response;    
+    http_set_status_code(&response, "200 OK");
+    http_set_connection_status(&response, "Keep-Alive");
+    http_set_content_type(&response, "text/event-stream");
+    http_set_body(&response, "data: ok_2\r\n\r\n"); 
+
+    for (int i = 0; i < 10; i++) {
+        http_response(&response, online.user.socket);
+    }
+    
+        
+    http_set_status_code(&response, "200 OK");
+    http_set_connection_status(&response, "close");
+    http_set_content_type(&response, "application/json");
+    http_set_body(&response, "{\"is_ok\":\"true\"}\r\n");
+    http_response(&response, args->client_socket);
+    //close(args->client_socket);
+
+    // free(http_body);
+    // free(chat_uuid);
+    // free(message);
+    // free(response_body);
+    //to do: free response
+}
 
     // to do: DB work
     // char* table_receiver = concat(receiver, sender);

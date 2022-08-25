@@ -23,12 +23,25 @@ export function MessageInput() {
         console.log(data);
       });
   }
+
+  const get_message_body = {
+    chat_uuid: 'test1-chq'
+  };
+  const getMessageHandler = () => {
+    fetch('/message')    
+      .then(response => {
+        return response.json();
+      })
+      .then(data => {
+        console.log(data);
+      });
+  }
   
   return (
     <div className="item chat-input input-container">
       <textarea className="input-message" name="message" id="message" defaultValue={""} />
       <button onClick={sendMessageHandler} className="send-message">send</button>
-      {/* <button className="audio-message">audio</button> */}
+      <button onClick={getMessageHandler} className="audio-message">upd</button>
     </div>
   );
 }

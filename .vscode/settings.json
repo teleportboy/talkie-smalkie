@@ -15,7 +15,11 @@
         "in.h": "c",
         "online_users_hashtable.h": "c",
         "inet.h": "c",
-        "amqp.h": "c"
+        "amqp.h": "c",
+        "pthread.h": "c",
+        "unistd.h": "c",
+        "errno.h": "c",
+        "string.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

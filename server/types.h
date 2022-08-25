@@ -7,13 +7,16 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <rabbitmq-c/amqp.h>
+
 #include "database.h"
+#include "online_users_hashtable.h"
 
-typedef struct sockaddr_in      sockaddr_in;
-typedef struct sockaddr         sockaddr;
-typedef struct addrinfo         addrinfo;
+typedef struct sockaddr_in sockaddr_in;
+typedef struct sockaddr    sockaddr;
+typedef struct addrinfo    addrinfo;
 
-typedef int    socket_descriptor;
+typedef int socket_descriptor;
 
 typedef struct executor {
     char  url[100];
@@ -33,8 +36,12 @@ typedef struct http_method_executors {
 typedef struct task_args {
     char*             url;
     char*             http;
-    data_base*        db;
+    
     socket_descriptor client_socket;
+    data_base*        db;
+    hash_table*       online_users;
+
+    amqp_connection_state_t rabbitmq_conn;
 } task_args;
 
 typedef struct queue_node {

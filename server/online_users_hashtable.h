@@ -1,7 +1,6 @@
 #ifndef ONLINE_USERS_H_DEFINED
 #define ONLINE_USERS_H_DEFINED
 
-
 typedef struct online_user {
 	char* nickname;
 	int	  socket;

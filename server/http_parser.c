@@ -85,19 +85,23 @@ void http_response(http* response, socket_descriptor client_socket) {
     length  = sprintf(buffer,          "HTTP/1.1 %s\r\n", response->status_code);
     length += sprintf(buffer + length, "Connection: %s\r\n", response->connection_status);
     length += sprintf(buffer + length, "Content-Type: %s\r\n\r\n", response->content_type);
-    length += sprintf(buffer + length, "%s\r\n\r\n", response->body);
+    length += sprintf(buffer + length, "%s", response->body);
     
+    printf("in response:\n%s", buffer);
 
     int bytes_sent = 0;
     while (bytes_sent < length) {
         bytes_sent = send(client_socket, buffer, length, 0);
         if (bytes_sent == -1) {
-            printf("eee kuda ti lezish\n");
+            printf("oops\n");
             printf("response length %d bytes sent %d\n", strlen(buffer), bytes_sent);
             return;
         }
     }
+
     printf("response length %d bytes sent %d\n", strlen(buffer), bytes_sent);
+
+    free(buffer);
 }
 
 //     sprintf(response, "%s", "HTTP/1.1 200 OK\r\n");

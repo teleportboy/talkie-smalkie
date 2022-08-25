@@ -12,17 +12,17 @@
 #include "task_executors.h"
 #include "database.h"
 #include "online_users_hashtable.h"
+#include "amqp_api/rabbitmq.h"
 
 #define SERVER_PORT    "8888"
 #define BUF_SIZE       4096
 #define SOCKET_ERROR   (-1)
 #define SERVER_BACKLOG 20
-#define THREADS_POOL   10
+#define THREADS_POOL   1
 
 int handle_connection(socket_descriptor client_socket, 
     http_method_executors* executors, task_args* external_args);
 int check(int exp, const char* msg);
-char* get_content_type(const char* path);
 void* thread_handler_function(void* arg);
 socket_descriptor server_listen();
 
@@ -33,19 +33,27 @@ int main(int argc, char **argv) {
 
     socket_descriptor server_socket = server_listen();
 
+    amqp_connection_state_t rabbitmq_connection = 
+        rabbitmq_open_connection("localhost", 5672);
+
     http_method_executors* executors = init_executors(HTTP_METHODS_COUNT);
     add_executor(executors, GET_html,     "GET",  "/");
     add_executor(executors, GET_html,     "GET",  "/login");
     add_executor(executors, GET_html,     "GET",  "/registration");
+    add_executor(executors, GET_favicon,  "GET",  "/favicon.ico");
     add_executor(executors, GET_scripts,  "GET",  "/index.bundle.js");
     add_executor(executors, POST_login,   "POST", "/login");
     add_executor(executors, POST_registr, "POST", "/registration");
     add_executor(executors, POST_message, "POST", "/message");
+    add_executor(executors, GET_message,  "GET",  "/message");
 
     connections_queue* connections = init_connections_queue();
+    hash_table online_users = create_hash_table(1024);
 
     task_args external_objs = {
-        .db = &data_base
+        .db = &data_base,
+        .rabbitmq_conn = rabbitmq_connection,
+        .online_users = &online_users
     };
     queue_handler_object arg_obj = {
         .external_objects = &external_objs,
@@ -113,9 +121,7 @@ int handle_connection(socket_descriptor client_socket,
     http_method_executors* executors, task_args* external_objects) {
 
     char* buffer = calloc(2048, sizeof(char));
-    int received = recv(client_socket, buffer, BUF_SIZE, 0);
-    
-    printf("\r\n%s\r\n", buffer);
+    int received = recv(client_socket, buffer, BUF_SIZE, 0);    
 
     char* method = calloc(100, sizeof(char));
     char* url    = calloc(100, sizeof(char));
@@ -123,6 +129,8 @@ int handle_connection(socket_descriptor client_socket,
     parse_http_method(buffer, method);
     parse_http_url(buffer, url);
     
+    printf("\nmethod: %s\nurl: %s\n", method, url);
+
     //Получить нужный колбэк учитывая http метод и путь 
     void (*executor)(void*) = get_executor(executors, method, url);
     if (!executor) {
@@ -133,11 +141,14 @@ int handle_connection(socket_descriptor client_socket,
     //Это сокет клиента, http 
     task_args args = {
         .db            = external_objects->db,
-        .client_socket = client_socket, 
+        .client_socket = client_socket,
+        .online_users  = external_objects->online_users,
+        .rabbitmq_conn = external_objects->rabbitmq_conn,
         .url           = strdup(url),
         .http          = strdup(buffer)
     };
 
+    //Вызов обработчика 
     executor((void*)&args);
 
     free(buffer);

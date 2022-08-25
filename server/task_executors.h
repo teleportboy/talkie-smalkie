@@ -16,9 +16,12 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
 
 void GET_html(void* data);
 void GET_scripts(void* data);
+void GET_favicon(void* data);
 
 void POST_login(void* data);
 void POST_registr(void* data);
+
 void POST_message(void* data);
+void GET_message(void* data);
 
 #endif
