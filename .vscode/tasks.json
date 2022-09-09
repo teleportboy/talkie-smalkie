@@ -9,13 +9,16 @@
 				"-fdiagnostics-color=always",
 				"-g",
 				"${workspaceFolder}/server/*.c",
-				"${workspaceFolder}/server/sqlite3_api/sqlite3.c",
 				"${workspaceFolder}/server/amqp_api/*.c",
+				"${workspaceFolder}/server/sse_api/*.c",
+				"${workspaceFolder}/server/database_api/*.c",
+				"${workspaceFolder}/server/utility_features/*.c",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}",
 				"-pthread",
 				"-lrabbitmq",
-				"-ldl"
+				"-ldl",
+				"-ljson-c"
 			],
 			"options": {
 				"cwd": "${fileDirname}"

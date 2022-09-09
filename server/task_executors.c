@@ -2,14 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <json-c/json.h>
 
 #include "task_executors.h"
 #include "http_parser.h"
-#include "database.h"
 #include "utility.h"
-#include "online_users_hashtable.h"
+#include "utility_features/json_parser.h"
 
 #include "amqp_api/rabbitmq.h"
+#include "sse_api/sse.h"
+
 
 #include "types.h"
 
@@ -120,19 +122,19 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
 void GET_html(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.html", "text/html");
-    //close(args->client_socket);
+    close(args->client_socket);
 }
 
 void GET_favicon(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/favicon.ico", "image/x-icon");
-    //close(args->client_socket);
+    close(args->client_socket);
 }
 
 void GET_scripts(void* data) {
     task_args* args = (task_args*)data;
     serve_file(args->client_socket, "public/index.bundle.js", "application/javascript");
-    //close(args->client_socket);
+    close(args->client_socket);
 }
 
 //to do: refactor, refactor and refactor
@@ -140,171 +142,209 @@ void POST_registr(void* data) {
     task_args* args = (task_args*)data;
 
     char* http_body = malloc(512 * sizeof(char));
-    parse_http_body(args->http, http_body);
-
-    char* uname = malloc(64 * sizeof(char));
-    parse_json_body(http_body, uname, "uname");    
-    char* psw = malloc(64 * sizeof(char));
-    parse_json_body(http_body, psw, "psw");
-
-    char* record_values = malloc(192 * sizeof(char));
-    sprintf(record_values, "'%s', '%s', '%s_all_chats', '%s_friends'", 
-            uname, psw, uname, uname);
-    db_add_record(args->db, "users", record_values);
-
-    char* all_chats_table_id = malloc(128 * sizeof(char));
-    sprintf(all_chats_table_id, "%s_all_chats", uname);
-    db_create_table(args->db, all_chats_table_id, "'uname_receiver', 'chat_id'");
-
-    char* friends_table_id = malloc(128 * sizeof(char));
-    sprintf(friends_table_id, "%s_friends", uname);
-    db_create_table(args->db ,friends_table_id, "'uname'");
+    parse_http_body(args->http, http_body);    
     
-    //to do: if ok
-    http response;
-    http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "close");
-    http_set_content_type(&response, "application/json");
-    http_set_body(&response, "{\"is_ok\":\"true\"}");
+    json_object* json  = json_tokener_parse(http_body);
+    char* uname = json_get_property(json, "uname");
+    char* psw   = json_get_property(json, "psw");
 
-    http_response(&response, args->client_socket);
+    int is_exists = db_is_exist(args->data_base, "users", "uname", uname);
+    if (!is_exists) {
+        char* record_values = calloc(128, sizeof(char));
+        sprintf(record_values, "'%s', '%s'", uname, psw);
+        db_add_record(args->data_base, "users", record_values);
 
-    //close(args->client_socket);
+        //Создать таблицу чатов новоиспечённого пользователя
+        db_create_table(args->data_base, uname, "chatroom");
 
-    //Освободить использованную память
+        http_ok_response(args->client_socket, "true");
+        free(record_values);
+    } else {
+        http_ok_response(args->client_socket, "false");
+    }
+
+    close(args->client_socket);
+
     free(http_body);
-    free(uname);
-    free(psw);
-    free(record_values);
-    free(all_chats_table_id);
-    free(friends_table_id);
 }
 
-//to do: add db. add hashtable
 void POST_login(void* data) {
     task_args* args = (task_args*)data;
 
     char* http_body = calloc(512, sizeof(char));
     parse_http_body(args->http, http_body);
 
-    char* uname = calloc(64, sizeof(char));
-    parse_json_body(http_body, uname, "uname");
-    char* psw = calloc(64, sizeof(char));
-    parse_json_body(http_body, psw, "psw");
-
-    char* record_values = calloc(192, sizeof(char));
-    sprintf(record_values, "'%s', '%s'", uname, psw);
-    printf("rec values %s socket: %d\n", record_values, args->client_socket);
-
-    ht_insert(args->online_users, uname, args->client_socket);
-
-    http response;
-    http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "Keep-Alive");
-    http_set_content_type(&response, "text/event-stream");
-    http_set_body(&response, "data: ok_1\r\n\r\n");
-    http_response(&response, args->client_socket);  
-
-    // int ht_sock = ht_get_item(args->online_users, uname).user.socket;
-    // http_response(&response, ht_sock);
-  
-    //close(args->client_socket);
-
+    json_object* json = json_tokener_parse(http_body);
     free(http_body);
-    free(uname);
-    free(psw);    
-    free(record_values);
-    //to do free response http
+
+    char* uname = json_get_property(json, "uname");
+    char* psw   = json_get_property(json, "psw");
+
+    int is_correct[2];
+    is_correct[0] = db_is_exist(args->data_base, "users", "uname", uname);
+    is_correct[1] = db_is_exist(args->data_base, "users", "psw", psw);
+
+    if (is_correct[0] && is_correct[1]) {
+        http_ok_response(args->client_socket, "true");
+        return;
+    }
+    
+    http_ok_response(args->client_socket, "false");    
 }
 
-//to do: refactor, refactor and refactor. poka chto invalid
+void POST_chatroom(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* http_body = calloc(512, sizeof(char));
+    parse_http_body(args->http, http_body);
+
+    json_object* json = json_tokener_parse(http_body);
+    free(http_body);
+
+    char* chatroom = json_get_property(json, "chatroom");
+    char* room_record = calloc(128, sizeof(char));
+    sprintf(room_record, "%s", chatroom);
+    int is_exist = db_is_table_exist(args->data_base, room_record);
+
+    if (!is_exist) {
+        db_create_table(args->data_base, room_record, "message, sender"); 
+        free(room_record);
+
+        char* record_value = calloc(128, sizeof(char));
+        sprintf(record_value, "'%s'", chatroom);
+        db_add_record(args->data_base, "chatrooms", record_value);
+        free(record_value);
+
+        http_ok_response(args->client_socket, "true");
+    }
+
+    http_ok_response(args->client_socket, "false");
+}
+
+void GET_find_rooms(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* match = strdup(strchr(args->url_query, '=') + 1);
+    int chatrooms_count = 1000;
+    char** chatrooms = db_select_matches(args->data_base, 
+           "chatrooms", match, &chatrooms_count
+    );
+
+    json_object* jobj = json_object_new_object();
+    json_object* chatrooms_json = json_object_new_array();
+    for (int i = 0; i < chatrooms_count; i++) {
+        json_set_array_property(&chatrooms_json, chatrooms[i]);
+    }
+    json_object_object_add(jobj, "chatrooms", chatrooms_json);
+
+    printf("rooms searched: %s\n", (char*)json_object_to_json_string(jobj));
+    http_json_response(args->client_socket, (char*)json_object_to_json_string(jobj));
+    
+    free(match);  
+}
+
+void POST_room_join(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* http_body = calloc(512, sizeof(char));
+    parse_http_body(args->http, http_body);
+
+    json_object* json = json_tokener_parse(http_body);
+    free(http_body);
+
+    char* uname    = json_get_property(json, "uname");
+    char* chatroom = json_get_property(json, "chatroom");
+
+    char* record_new_chat = calloc(128, sizeof(char));
+    sprintf(record_new_chat, "'%s'", chatroom);
+
+    db_add_record(args->data_base, uname, record_new_chat);
+    free(record_new_chat);
+
+    http_ok_response(args->client_socket, "true");
+}
+
+void GET_chatrooms(void* data) {
+    task_args* args = (task_args*)data;
+
+    char* match = strdup(strchr(args->url_query, '=') + 1);
+    int chatrooms_count = 1000;
+    char** chatrooms = db_select_column(args->data_base, 
+           match, "chatroom", &chatrooms_count
+    );
+
+    json_object* jobj = json_object_new_object();
+    json_object* chatrooms_json = json_object_new_array();
+    for (int i = 0; i < chatrooms_count; i++) {
+        json_set_array_property(&chatrooms_json, chatrooms[i]);
+    }
+    json_object_object_add(jobj, "chatrooms", chatrooms_json);
+
+    printf("rooms searched: %s\n", (char*)json_object_to_json_string(jobj));
+    http_json_response(args->client_socket, (char*)json_object_to_json_string(jobj));
+    
+    free(match);
+    for (int i = 0; i < chatrooms_count; i++) {
+        free(chatrooms[i]);
+    }
+    free(chatrooms);
+}
+
 void POST_message(void* data) {
     task_args* args = (task_args*)data;
 
-    //parsing
-    char* http_body = malloc(512 * sizeof(char));
+    char* http_body = calloc(1024, sizeof(char));
     parse_http_body(args->http, http_body);
 
-    char* message  = calloc(512, sizeof(char));
-    parse_json_body(http_body, message, "message");
-    printf("message: %s\n", message);
-    char* sender   = malloc(64 * sizeof(char));
-    parse_json_body(http_body, sender, "sender");
-    char* receiver = malloc(64 * sizeof(char));
-    parse_json_body(http_body, receiver, "receiver");
+    json_object* json = json_tokener_parse(http_body);
+    
+    char* message  = json_get_property(json, "message");
+    char* chatroom = json_get_property(json, "chatroom");
+    char* sender   = json_get_property(json, "sender");
 
-    rabbitmq_send_message(args->rabbitmq_conn, "test1-chq", "test1", message);
+    json_object* data_to_send = json_object_new_object();
+    json_set_value(data_to_send, "message", message);
+    json_set_value(data_to_send, "chatroom", chatroom);
+    json_set_value(data_to_send, "sender", sender);
 
-    //response
-    http response;
-    http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "close");
-    http_set_content_type(&response, "application/json");
-    http_set_body(&response, "{\"is_ok\":\"true\"}");
-    http_response(&response, args->client_socket);
+    char* send = (char*)json_object_to_json_string(data_to_send);
+    send_message(send, chatroom);
 
-    //close(args->client_socket);
+    char* record_values = calloc(512, sizeof(char));
+    sprintf(record_values, "'%s', '%s'", message, sender);
+    db_add_record(args->data_base, chatroom, record_values);
 
+    http_ok_response(args->client_socket, "true");
     free(http_body);
-    free(message);
-    free(sender);
-    free(receiver);
-    // free(table_receiver);
-    // free(receiver_values);
-    // free(table_sender);
-    // free(sender_values);     
 }
 
-void GET_message(void* data) {
+void GET_all_chats(void* data) {
     task_args* args = (task_args*)data;
 
-    //parsing
-    // char* http_body = malloc(512 * sizeof(char));
-    // parse_http_body(args->http, http_body);
+    char* match = strdup(strchr(args->url_query, '=') + 1);
+    int chatrooms_count = 1000;
+    char** chatrooms = db_select_column(args->data_base, 
+           match, "chatroom", &chatrooms_count
+    );
 
-    // char* chat_uuid  = malloc(64 * sizeof(char));
-    // parse_json_body(http_body, chat_uuid, "chat_uuid");
-
-    //char* message = rabbitmq_get_message(args->rabbitmq_conn, "test1-chq");
-
-    table_element online = ht_get_item(args->online_users, "teleportboy");
-
-    http response;    
-    http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "Keep-Alive");
-    http_set_content_type(&response, "text/event-stream");
-    http_set_body(&response, "data: ok_2\r\n\r\n"); 
-
-    for (int i = 0; i < 10; i++) {
-        http_response(&response, online.user.socket);
+    int count = 1000;
+    json_object* all_chats = json_object_new_object();
+    json_object* chats = json_object_new_array();
+    for (int i = 0; i < chatrooms_count; i++) {
+        json_object* chat = json_object_new_object();
+        json_set_value(chat, "chatroom", chatrooms[i]);
+        json_object_object_add(chat, "messages",
+            db_select_columns_as_json(args->data_base, chatrooms[i], 2, &count)
+        );
+        json_object_array_add(chats, chat);
     }
-    
-        
-    http_set_status_code(&response, "200 OK");
-    http_set_connection_status(&response, "close");
-    http_set_content_type(&response, "application/json");
-    http_set_body(&response, "{\"is_ok\":\"true\"}\r\n");
-    http_response(&response, args->client_socket);
-    //close(args->client_socket);
+    json_object_object_add(all_chats, "allChats", chats);
 
-    // free(http_body);
-    // free(chat_uuid);
-    // free(message);
-    // free(response_body);
-    //to do: free response
+    http_json_response(args->client_socket, (char*)json_object_to_json_string(all_chats));
+
+    free(match);
+    for (int i = 0; i < chatrooms_count; i++) {
+        free(chatrooms[i]);
+    }
+    free(chatrooms);
 }
-
-    // to do: DB work
-    // char* table_receiver = concat(receiver, sender);
-    // db_create_table(args->db, table_receiver, "'message', 'is_sent'");
-
-    // char* receiver_values = malloc(128 * sizeof(char));
-    // sprintf(receiver_values, "'%s', '0'", message);
-    // db_add_record(args->db, table_receiver, receiver_values);
-
-    // char* table_sender = concat(sender, receiver);
-    // db_create_table(args->db, table_sender, "'message', 'is_sent'");
-
-    // char* sender_values = malloc(128 * sizeof(char));
-    // sprintf(sender_values, "'%s', '1'", message);
-    // db_add_record(args->db, table_sender, sender_values);

@@ -1,13 +1,17 @@
 import React from "react";
+import { useSelector } from "react-redux";
+import { store } from "../../store/store";
 
 export function MessageInput() {
+  const chatid = useSelector(state => state.currentChat.id);
+  const uname = useSelector(state => state.auth.uname);
+  
   const sendMessageHandler = () => {
     const message = {
       message: document.getElementById('message').value,
-      receiver: 'teleportboy',
-      sender: 'loading'
+      chatroom: chatid,
+      sender: uname
     };
-    console.log(message);
     
     fetch('/message', {
       method: 'POST',
@@ -20,20 +24,6 @@ export function MessageInput() {
         return response.json();
       })
       .then(data => {
-        console.log(data);
-      });
-  }
-
-  const get_message_body = {
-    chat_uuid: 'test1-chq'
-  };
-  const getMessageHandler = () => {
-    fetch('/message')    
-      .then(response => {
-        return response.json();
-      })
-      .then(data => {
-        console.log(data);
       });
   }
   
@@ -41,7 +31,6 @@ export function MessageInput() {
     <div className="item chat-input input-container">
       <textarea className="input-message" name="message" id="message" defaultValue={""} />
       <button onClick={sendMessageHandler} className="send-message">send</button>
-      <button onClick={getMessageHandler} className="audio-message">upd</button>
     </div>
   );
 }

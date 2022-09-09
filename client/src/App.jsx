@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom';
 import { Chat } from './components/chat/chat.jsx';
 import { Login } from './components/login/login.jsx';
 import { Registration } from './components/login/registration.jsx';
+import { Provider } from 'react-redux';
 import './App.css'
 
 export function App() {
@@ -12,12 +13,12 @@ export function App() {
   // });
 
   return (
-    <div className='container'>
-      <Routes>
-        <Route path="/" element={<Chat />} />
-        <Route path='/login' element={<Login />} />
-        <Route path='/registration' element={<Registration />} />
-      </Routes>
+    <div className='container'>      
+        <Routes>
+          <Route path='/' element={<Chat />} />
+          <Route path='/login' element={<Login />} />
+          <Route path='/registration' element={<Registration />} />
+        </Routes>
     </div>
   );
 }

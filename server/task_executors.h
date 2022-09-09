@@ -23,5 +23,10 @@ void POST_registr(void* data);
 
 void POST_message(void* data);
 void GET_message(void* data);
+void POST_chatroom(void* data);
+void GET_find_rooms(void* data);
+void GET_chatrooms(void* data);
+void GET_all_chats(void* data);
+void POST_room_join(void* data);
 
 #endif

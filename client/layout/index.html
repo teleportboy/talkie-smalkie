@@ -10,8 +10,15 @@
 <body>
   <div class="container">
     <div class="item chat-menu">
-      <span>nickname</span>
-      <button>call</button>
+      <span>chatname</span>
+      <button class="chat-join-btn">join</button>
+      <button class="chat-leave-btn">leave</button>
+    </div>
+
+    <div class="item create-chat">
+      <span>create chat</span>
+      <input class="find-user" type="text" placeholder="chatname">
+      <button class="find-user-btn">ok</button>
     </div>
 
     <div class="item profile-menu">
@@ -52,12 +59,10 @@
       </div>
     </div>
 
-    <div class="item friends-menu">friends
+    <div class="item friends-menu">chatrooms
       <ul class="friends-list">
         <span class="friend">
           <li class="item">rjavchina</li>
-          <button>chat</button>
-          <button>remove</button>
         </span>
       </ul>
     </div>
@@ -65,7 +70,6 @@
     <div class="item chat-input input-container">
       <textarea class="input-message" name="message" id="message"></textarea>
       <button class="send-message">send</button>
-      <button class="audio-message">audio</button>
     </div>
 
   </div>

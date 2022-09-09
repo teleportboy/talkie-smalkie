@@ -19,7 +19,12 @@
         "pthread.h": "c",
         "unistd.h": "c",
         "errno.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "stdio.h": "c",
+        "json.h": "c",
+        "debug.h": "c",
+        "json_c_version.h": "c",
+        "json_parser.h": "c"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }

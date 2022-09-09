@@ -1,23 +1,23 @@
 import React from "react";
 
-export function MessageSent() {
+export function MessageReceived({content}) {
   return (
     <div className="message-group-received">
       <div className="message-received">
         <div className="message-received-text">
-          Hey manaaaaaaaadsdfffffffff ffffffffffffffffffffffffffs ffffff! How'fffffffffffs itfffffffffffffff going?
+          {content}
         </div>
       </div>
     </div>
   );
 }
 
-export function MessageReceived() {
+export function MessageSent({content}) {
   return (
     <div className="message-group-sent">
       <div className="message-sent">
         <div className="message-sent-text">
-          Hey man! How's it going?
+          {content}
         </div>
       </div>
     </div>

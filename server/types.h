@@ -6,11 +6,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
-
 #include <rabbitmq-c/amqp.h>
 
-#include "database.h"
-#include "online_users_hashtable.h"
+#include "database_api/database.h"
 
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr    sockaddr;
@@ -36,11 +34,11 @@ typedef struct http_method_executors {
 typedef struct task_args {
     char*             url;
     char*             http;
+    char*             url_query;
     
     socket_descriptor client_socket;
-    data_base*        db;
-    hash_table*       online_users;
-
+    
+    data_base*              data_base;
     amqp_connection_state_t rabbitmq_conn;
 } task_args;
 
