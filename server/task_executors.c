@@ -10,7 +10,7 @@
 #include "utility_features/json_parser.h"
 
 #include "amqp_api/rabbitmq.h"
-#include "sse_api/sse.h"
+#include "sse/sse.h"
 
 
 #include "types.h"

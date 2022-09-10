@@ -13,7 +13,7 @@
 #include "task_executors.h"
 #include "amqp_api/rabbitmq.h"
 
-#include "sse_api/sse.h"
+#include "sse/sse.h"
 
 #define SERVER_PORT    "8888"
 #define BUF_SIZE       4096
