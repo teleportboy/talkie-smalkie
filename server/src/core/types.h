@@ -6,9 +6,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <rabbitmq-c/amqp.h>
 
-#include "database_api/database.h"
+#include "../database_api/database.h"
 
 typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr    sockaddr;
@@ -38,8 +37,7 @@ typedef struct task_args {
     
     socket_descriptor client_socket;
     
-    data_base*              data_base;
-    amqp_connection_state_t rabbitmq_conn;
+    data_base*        data_base;
 } task_args;
 
 typedef struct queue_node {

@@ -5,13 +5,11 @@
 #include <json-c/json.h>
 
 #include "task_executors.h"
-#include "http_parser.h"
-#include "utility.h"
-#include "utility_features/json_parser.h"
+#include "../utility_features/http_parser.h"
+#include "../utility_features/utility.h"
+#include "../utility_features/json_parser.h"
 
-#include "amqp_api/rabbitmq.h"
-#include "sse/sse.h"
-
+#include "../sse/sse.h"
 
 #include "types.h"
 
@@ -121,19 +119,19 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
 
 void GET_html(void* data) {
     task_args* args = (task_args*)data;
-    serve_file(args->client_socket, "public/index.html", "text/html");
+    serve_file(args->client_socket, "../public/index.html", "text/html");
     close(args->client_socket);
 }
 
 void GET_favicon(void* data) {
     task_args* args = (task_args*)data;
-    serve_file(args->client_socket, "public/favicon.ico", "image/x-icon");
+    serve_file(args->client_socket, "../public/favicon.ico", "image/x-icon");
     close(args->client_socket);
 }
 
 void GET_scripts(void* data) {
     task_args* args = (task_args*)data;
-    serve_file(args->client_socket, "public/index.bundle.js", "application/javascript");
+    serve_file(args->client_socket, "../public/index.bundle.js", "application/javascript");
     close(args->client_socket);
 }
 

@@ -1,7 +1,7 @@
 #ifndef HTTP_PARSER_H_INCLUDED
 #define HTTP_PARSER_H_INCLUDED
 
-#include "types.h"
+#include "../core/types.h"
 
 typedef struct http {
     char* status_code;
@@ -11,6 +11,7 @@ typedef struct http {
     char* content_length;
     char* body;
     char* connection_status;
+    char* cors;
 } http;
 
 void parse_http_method(char* http, char* dest);
@@ -26,6 +27,7 @@ void http_set_content_type(http* http, char* str);
 void http_set_status_code(http* http, char* str);
 void http_set_method(http* http, char* str);
 void http_set_body(http* http, char* str);
+void http_set_cors(http* http);
 void http_set_url(http* http, char* str);
 //to do
 void http_free(http* http);

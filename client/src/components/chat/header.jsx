@@ -6,7 +6,6 @@ export function ChatHeader() {
   return (
     <div className="item chat-menu">
       <span>chatroom#{chat_id}</span>
-      <button>join</button>
     </div>
   );
 }

@@ -4,7 +4,7 @@
 
 #include "http_parser.h"
 #include "utility.h"
-#include "types.h"
+#include "../core/types.h"
 
 void parse_http_method(char* http, char* dest) {
     int index = nth_char_index_of(http, ' ', 1);    
@@ -111,9 +111,15 @@ void http_set_connection_status(http* http, char* str) {
     http->connection_status = strdup(str);
 }
 
+void http_set_cors(http* http) {
+    http->cors = strdup("Access-Control-Allow-Origin: *");
+    printf("%s\n", http->cors);
+}
+
 void http_ok_response(socket_descriptor client_socket, char* result) {
     http response;
     http_set_status_code(&response, "200 OK");
+    http_set_cors(&response);
     http_set_connection_status(&response, "close");
     http_set_content_type(&response, "application/json");
     char* body = calloc(128, sizeof(char));
@@ -129,6 +135,7 @@ void http_ok_response(socket_descriptor client_socket, char* result) {
 void http_json_response(socket_descriptor client_socket, char* json) {
     http response;
     http_set_status_code(&response, "200 OK");
+    http_set_cors(&response);
     http_set_connection_status(&response, "close");
     http_set_content_type(&response, "application/json");
     char* body = calloc(4096, sizeof(char));
@@ -158,11 +165,13 @@ void http_response(http* response, socket_descriptor client_socket) {
 
     int length = 0;
     length  = sprintf(buffer,          "HTTP/1.1 %s\r\n", response->status_code);
+    length += sprintf(buffer + length, "%s\r\n", response->cors);
     length += sprintf(buffer + length, "Connection: %s\r\n", response->connection_status);
     length += sprintf(buffer + length, "Content-Length: %s\r\n", response->content_length);
     length += sprintf(buffer + length, "Content-Type: %s\r\n\r\n", response->content_type);
     length += sprintf(buffer + length, "%s", response->body);
     
+    printf("%s\n", buffer);
 
     int bytes_sent = 0;
     while (bytes_sent < length) {

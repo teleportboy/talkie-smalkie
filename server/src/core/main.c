@@ -7,19 +7,18 @@
 
 #include "types.h"
 
-#include "database_api/database.h"
-#include "connections_queue.h"
-#include "http_parser.h"
+#include "../database_api/database.h"
+#include "data_structures/connections_queue.h"
+#include "../utility_features/http_parser.h"
 #include "task_executors.h"
-#include "amqp_api/rabbitmq.h"
 
-#include "sse/sse.h"
+#include "../sse/sse.h"
 
 #define SERVER_PORT    "8888"
 #define BUF_SIZE       4096
 #define SOCKET_ERROR   (-1)
 #define SERVER_BACKLOG 20
-#define THREADS_POOL   1
+#define THREADS_POOL   10
 
 int handle_connection(socket_descriptor client_socket, 
     http_method_executors* executors, task_args* external_args);
@@ -32,12 +31,8 @@ int main(int argc, char **argv) {
     db_init(&db, "database.db");
     db_create_table(&db, "users", "uname, psw");
     db_create_table(&db, "chatrooms", "chatroom");
-    //set_debug();
 
     socket_descriptor server_socket = server_listen();
-
-    amqp_connection_state_t rabbitmq_connection = 
-        rabbitmq_open_connection("localhost", 5672);
 
     http_method_executors* executors = init_executors(HTTP_METHODS_COUNT);
     add_executor(executors, GET_html,       "GET",  "/");
@@ -57,8 +52,7 @@ int main(int argc, char **argv) {
     connections_queue* connections = init_connections_queue();
 
     task_args external_objs = {
-        .data_base     = &db,
-        .rabbitmq_conn = rabbitmq_connection
+        .data_base     = &db
     };
     queue_handler_object arg_obj = {
         .external_objects = &external_objs,
@@ -146,7 +140,6 @@ int handle_connection(socket_descriptor client_socket,
     //Это сокет клиента, http 
     task_args args = {
         .client_socket = client_socket,
-        .rabbitmq_conn = external_objects->rabbitmq_conn,
         .data_base     = external_objects->data_base,
         .url           = strdup(url),
         .url_query     = url_query,
@@ -161,7 +154,9 @@ int handle_connection(socket_descriptor client_socket,
     free(url);
     free(args.url);
     free(args.http);
-    //free(args.url_query);
+    if (!args.url_query) {
+        free(args.url_query);
+    }
 
     return 1;
 }

@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include "connections_queue.h"
-#include "types.h"
+#include "../types.h"
 
 void enqueue_connection(connections_queue* connections, 
                         socket_descriptor client_socket) {

@@ -6,8 +6,8 @@
 #include <fcntl.h>
 
 void send_message(char* message, char* chat_uuid) {
-    int fd = open("/var/run/myprogs/hassesfifo", O_WRONLY);
-
+    int fd = open("/var/run/hassesfifo", O_WRONLY);
+    printf("is opened? %d\n", fd);
     int malloc_size = strlen(message) + strlen(chat_uuid) + 1;
     char* command = calloc(malloc_size, sizeof(char));
     sprintf(command, "%s=%s", chat_uuid, message);
@@ -20,8 +20,7 @@ void send_message(char* message, char* chat_uuid) {
 
 void set_debug() {
     char* command = "loglevel_normal";
-    int fd = open("/var/run/myprogs/hassesfifo", O_WRONLY);
-    printf("nuka cho s ebalom %d\n", fd);
+    int fd = open("/var/run/hassesfifo", O_WRONLY);
     write(fd, command, strlen(command));
     close(fd);
 }

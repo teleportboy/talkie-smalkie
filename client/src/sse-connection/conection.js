@@ -4,7 +4,7 @@ import { pushMessage } from "../store/chat-area-slice";
 import { reloadChat } from "../store/current-chat-slice";
 
 export const subscribeToChatRoom = (chatroom, dispatch) => {
-  const url = new URL('http://192.168.218.135:8080/sseevents');
+  const url = new URL('http://127.0.0.1:8080/sseevents');
   const params = { subscribe: chatroom };
   url.search = new URLSearchParams(params).toString();
   
