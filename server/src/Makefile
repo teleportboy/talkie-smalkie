@@ -1,4 +1,4 @@
-TARGET = server
+TARGET = ../server
 CC = gcc
 DEPENDENCIES = -pthread -ljson-c -ldl
 

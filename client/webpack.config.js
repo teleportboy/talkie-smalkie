@@ -5,7 +5,7 @@ module.exports = {
   mode: "development",
   entry: './src/index.js',
   output: {
-    path: path.join(__dirname, '../server/public'),
+    path: '/talkie-smalkie/public',
     filename: 'index.bundle.js',
   },
   plugins: [

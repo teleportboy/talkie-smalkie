@@ -32,7 +32,7 @@ export function Login() {
         dispatch(login(formProps.uname));
         navigate('/');
 
-        let url = new URL('http://127.0.0.1:8888/all_chats');
+        let url = new URL('http://localhost:8888/all_chats');
         const params = { uname:  store.getState().auth.uname };
         url.search = new URLSearchParams(params).toString();
             

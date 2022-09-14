@@ -1,0 +1,15 @@
+version: '3'
+services:
+  server:
+    build: ./server
+    ports:
+      - 8888:8888
+      - 8080:8080
+    volumes:
+      - public:/talkie-smalkie/public
+  client:
+    build: ./client
+    volumes:
+      - public:/talkie-smalkie/public  
+volumes:
+  public:

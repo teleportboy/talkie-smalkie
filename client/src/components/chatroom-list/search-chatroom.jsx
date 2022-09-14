@@ -8,7 +8,7 @@ export function SearchChatRoom() {
   const getChatRooms = () => {
     const searchValue = document.getElementById('search_chatroom').value;
 
-    const url = new URL('http://127.0.0.1:8888/search_chatrooms');
+    const url = new URL('http://localhost:8888/search_chatrooms');
     const params = { match: searchValue };
     url.search = new URLSearchParams(params).toString();
 

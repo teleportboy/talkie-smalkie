@@ -26,7 +26,10 @@ int check(int exp, const char* msg);
 void* thread_handler_function(void* arg);
 socket_descriptor server_listen();
 
-int main(int argc, char **argv) {
+int main() {
+    printf("server started!\n");
+    system("ls -la");
+    //system("hasses -p=8080 -murl=/sseevents -fifo=/var/run/hassesfifo -nodaemon");
     data_base db;
     db_init(&db, "database.db");
     db_create_table(&db, "users", "uname, psw");
