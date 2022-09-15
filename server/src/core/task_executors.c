@@ -119,7 +119,7 @@ int serve_file(const socket_descriptor client_socket, const char* path, const ch
 
 void GET_html(void* data) {
     task_args* args = (task_args*)data;
-    serve_file(args->client_socket, "./public/index.html", "text/html");
+    serve_file(args->client_socket, "/talkie-smalkie/public/index.html", "text/html");
     close(args->client_socket);
 }
 
@@ -131,7 +131,7 @@ void GET_favicon(void* data) {
 
 void GET_scripts(void* data) {
     task_args* args = (task_args*)data;
-    serve_file(args->client_socket, "./public/index.bundle.js", "application/javascript");
+    serve_file(args->client_socket, "/talkie-smalkie/public/index.bundle.js", "application/javascript");
     close(args->client_socket);
 }
 
